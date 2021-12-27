@@ -16,6 +16,7 @@ import requests
 
 from .tts import TTSValidator
 from .remote_tts import RemoteTTS
+from mycroft.util.log import LOG
 
 
 class MaryTTS(RemoteTTS):
@@ -36,7 +37,8 @@ class MaryTTS(RemoteTTS):
         params = self.PARAMS.copy()
         params['LOCALE'] = self.lang
         params['VOICE'] = self.voice
-        params['INPUT_TEXT'] = sentence.encode('utf-8')
+        newSentence = sentence.replace("-", "minus ")
+        params['INPUT_TEXT'] = newSentence.encode('utf-8')
         return params
 
 
