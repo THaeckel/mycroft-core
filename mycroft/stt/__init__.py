@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from json import decoder, detect_encoding
 import re
 import json
 from abc import ABCMeta, abstractmethod
@@ -78,7 +79,6 @@ class GoogleJsonSTT(STT, metaclass=ABCMeta):
 
 
 class BasicSTT(STT, metaclass=ABCMeta):
-
     def __init__(self):
         super(BasicSTT, self).__init__()
         self.username = str(self.credential.get("username"))
@@ -86,7 +86,6 @@ class BasicSTT(STT, metaclass=ABCMeta):
 
 
 class KeySTT(STT, metaclass=ABCMeta):
-
     def __init__(self):
         super(KeySTT, self).__init__()
         self.id = str(self.credential.get("client_id"))
@@ -161,8 +160,8 @@ class IBMSTT(TokenSTT):
             'es-CO', 'es-MX', 'es-PE'
         ]
         if self.lang not in supported_languages:
-            raise ValueError(
-                'Unsupported language "{}" for IBM STT.'.format(self.lang))
+            raise ValueError('Unsupported language "{}" for IBM STT.'.format(
+                self.lang))
 
         audio_model = 'BroadbandModel'
         if audio.sample_rate < 16000 and not self.lang == 'ar-AR':
@@ -177,14 +176,17 @@ class IBMSTT(TokenSTT):
             'X-Watson-Learning-Opt-Out': 'true'
         }
 
-        response = post(url, auth=('apikey', self.token), headers=headers,
-                        data=audio.get_flac_data(), params=params)
+        response = post(url,
+                        auth=('apikey', self.token),
+                        headers=headers,
+                        data=audio.get_flac_data(),
+                        params=params)
 
         if response.status_code == 200:
             result = json.loads(response.text)
             if result.get('error_code') is None:
-                if ('results' not in result or len(result['results']) < 1 or
-                        'alternatives' not in result['results'][0]):
+                if ('results' not in result or len(result['results']) < 1
+                        or 'alternatives' not in result['results'][0]):
                     raise Exception(
                         'Transcription failed. Invalid or empty results.')
                 transcription = []
@@ -231,8 +233,8 @@ class YandexSTT(STT):
     def execute(self, audio, language=None):
         self.lang = language or self.lang
         if self.lang not in ["en-US", "ru-RU", "tr-TR"]:
-            raise ValueError(
-                "Unsupported language '{}' for Yandex STT".format(self.lang))
+            raise ValueError("Unsupported language '{}' for Yandex STT".format(
+                self.lang))
 
         # Select sample rate based on source sample rate
         # and supported sample rate list
@@ -253,8 +255,7 @@ class YandexSTT(STT):
         url = "https://stt.api.cloud.yandex.net/speech/v1/stt:recognize"
         headers = {"Authorization": "Api-Key {}".format(self.api_key)}
         params = "&".join([
-            "lang={}".format(self.lang),
-            "format=lpcm",
+            "lang={}".format(self.lang), "format=lpcm",
             "sampleRateHertz={}".format(sample_rate)
         ])
 
@@ -288,6 +289,7 @@ def requires_pairing(func):
                 return 'pair my device'
             else:
                 raise
+
     return wrapper
 
 
@@ -333,7 +335,9 @@ class DeepSpeechServerSTT(STT):
     def execute(self, audio, language=None):
         language = language or self.lang
         response = post(self.config.get("uri"), data=audio.get_wav_data())
-        return response.text
+        # for me the encoding was not set correctly in the HTML response so auto detection worked better
+        # return response.text
+        return response.content.decode(detect_encoding(response.content))
 
 
 class StreamThread(Thread, metaclass=ABCMeta):
@@ -346,7 +350,6 @@ class StreamThread(Thread, metaclass=ABCMeta):
         queue (Queue): Input Queue
         language (str): language code for the current language.
     """
-
     def __init__(self, queue, language):
         super().__init__()
         self.language = language
@@ -473,11 +476,8 @@ class DeepSpeechStreamServerSTT(StreamingSTT):
     """
     def create_streaming_thread(self):
         self.queue = Queue()
-        return DeepSpeechStreamThread(
-            self.queue,
-            self.lang,
-            self.config.get('stream_uri')
-        )
+        return DeepSpeechStreamThread(self.queue, self.lang,
+                                      self.config.get('stream_uri'))
 
 
 class GoogleStreamThread(StreamThread):
@@ -511,7 +511,6 @@ class GoogleCloudStreamingSTT(StreamingSTT):
         ...
 
     """
-
     def __init__(self):
         global SpeechClient, types, enums, Credentials
         from google.cloud.speech import SpeechClient, types, enums
@@ -521,8 +520,7 @@ class GoogleCloudStreamingSTT(StreamingSTT):
         # override language with module specific language selection
         self.language = self.config.get('lang') or self.lang
         credentials = Credentials.from_service_account_info(
-            self.credential.get('json')
-        )
+            self.credential.get('json'))
 
         self.client = SpeechClient(credentials=credentials)
         recognition_config = types.RecognitionConfig(
@@ -540,12 +538,8 @@ class GoogleCloudStreamingSTT(StreamingSTT):
 
     def create_streaming_thread(self):
         self.queue = Queue()
-        return GoogleStreamThread(
-            self.queue,
-            self.language,
-            self.client,
-            self.streaming_config
-        )
+        return GoogleStreamThread(self.queue, self.language, self.client,
+                                  self.streaming_config)
 
 
 class KaldiSTT(STT):
@@ -571,8 +565,7 @@ class BingSTT(TokenSTT):
 
     def execute(self, audio, language=None):
         self.lang = language or self.lang
-        return self.recognizer.recognize_bing(audio, self.token,
-                                              self.lang)
+        return self.recognizer.recognize_bing(audio, self.token, self.lang)
 
 
 class HoundifySTT(KeySTT):
@@ -596,8 +589,7 @@ class GoVivaceSTT(TokenSTT):
     def execute(self, audio, language=None):
         url = self.config.get("uri", self.default_uri) + "?key=" + \
               self.token + "&action=find&format=8K_PCM16&validation_string="
-        response = put(url,
-                       data=audio.get_wav_data(convert_rate=8000))
+        response = put(url, data=audio.get_wav_data(convert_rate=8000))
         return self.get_response(response)
 
     def get_response(self, response):
