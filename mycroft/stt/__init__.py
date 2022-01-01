@@ -26,6 +26,9 @@ from mycroft.configuration import Configuration
 from mycroft.util.log import LOG
 from mycroft.util.plugins import load_plugin
 
+from lingua_franca import load_languages
+from lingua_franca.parse import extract_duration
+
 
 class STT(metaclass=ABCMeta):
     """STT Base class, all STT backends derive from this one. """
@@ -331,6 +334,9 @@ class DeepSpeechServerSTT(STT):
     """
     def __init__(self):
         super(DeepSpeechServerSTT, self).__init__()
+        # there was some weired bug with lingua franca not beeing able to understand durations etc.
+        # so load language 'de' again here as a workaround...
+        load_languages('de')
 
     def execute(self, audio, language=None):
         language = language or self.lang
