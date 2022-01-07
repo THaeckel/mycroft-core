@@ -335,8 +335,8 @@ class DeepSpeechServerSTT(STT):
     def __init__(self):
         super(DeepSpeechServerSTT, self).__init__()
         # there was some weired bug with lingua franca not beeing able to understand durations etc.
-        # so load language 'de' again here as a workaround...
-        load_languages('de')
+        # so load language "de" again here as a workaround...
+        load_languages(["de"])
 
     def execute(self, audio, language=None):
         language = language or self.lang
